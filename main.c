@@ -8,7 +8,7 @@
 
 /* Standard Includes */
 #include "msp.h"
-
+#include <stdbool.h>
 
 //INCLUDE API DRIVERS
 #include "MAX7219.h"
@@ -46,6 +46,7 @@ void main(void)
     HCSR04_Init();
     Motor_Init();           //initializing Motor pins
 
+    static bool UpdateDisplayFlag = false;
     P1->SEL0 &= ~BIT0;  //On-Board LED for system heartbeat visualization (debugging)
     P1->SEL1 &= ~BIT0;
     P1->DIR |= BIT0;    // P1.0 output
@@ -59,28 +60,21 @@ void main(void)
 	    MAX7219_Service();
 
 	    /* SysTick decides when stuff runs */
-	    if(gSysTickFlag){
-	        SysTickCount++;
-
-	        /*********************** MAX7219 Stuff ***********************/
-	        if(SysTickCount == 4){  // Display should be updating every 1/2 second now
-	            SysTickCount = 0;               // Reset flag
-
-	            /* Display distance of object on 7-SEG */
-	            MAX7219_DisplayNumber(objectDistance.distanceCentimeters, objectDistance.distanceFeet, objectDistance.distanceInches);
-	        }
-
-
-	        /*********************** HCSR04 Stuff ***********************/
-	        if(distCalcAvailable){
-	            distCalcAvailable = 0;                          // Reset the flag
-	            calcDist(echoFallTime, echoRiseTime, &objectDistance);  // Call distance calculation function
-	        }
-
-
-	        SysTickTimeout = 0; //Turn off the SysTick Flag
-
+	    if(UpdateDisplayFlag){
+	        UpdateDisplayFlag = false;               // Reset flag
+	        /* Display distance of object on 7-SEG */
+	        MAX7219_DisplayNumber(objectDistance.distanceCentimeters, objectDistance.distanceFeet, objectDistance.distanceInches);
 	    }
+
+
+        /*********************** HCSR04 Stuff ***********************/
+        if(distCalcAvailable){
+            distCalcAvailable = 0;                          // Reset the flag
+            calcDist(echoFallTime, echoRiseTime, &objectDistance);  // Call distance calculation function
+            UpdateDisplayFlag = true;
+        }
+
+
 
         if( gSysTickFlag )                        //If SysTick Interrupt occurs
         {
