@@ -10,7 +10,7 @@
 
 
 #include <HCSR04.h>
-
+#include "Motor_Ctrl/Motor_Ctrl.h"
 
 /* Initialize HC-SR04 distance sensor module */
 void HCSR04_Init(){
@@ -50,4 +50,29 @@ void calcDist(int echoFallTime, int echoRiseTime, struct distance *dist){
     dist->distanceFeet = distIN_TOTAL / 12;     // Get feet broken off from inches
     dist->distanceInches = distIN_TOTAL % 12;     // Figure out how many inches are left over
 
+    if( dist->distanceInches >= 0 && dist->distanceInches < 6 )
+    {
+        setMotorDirection( true );
+        setMotorSpeed( 2 );
+    }
+    else if( dist->distanceInches >= 6 && dist->distanceInches < 12 )
+    {
+        setMotorDirection( true );
+        setMotorSpeed( 4 );
+    }
+    else if( dist->distanceInches >= 12 && dist->distanceInches < 18 )
+    {
+        setMotorDirection( false );
+        setMotorSpeed( 2 );
+    }
+    else if( dist->distanceInches >= 18 && dist->distanceInches < 12 )
+    {
+        setMotorDirection( false );
+        setMotorSpeed( 4 );
+    }
+    else
+    {
+        setMotorDirection( true );
+        setMotorSpeed( 0 );
+    }
 }
