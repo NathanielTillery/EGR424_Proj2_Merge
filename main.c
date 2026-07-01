@@ -76,20 +76,6 @@ void main(void)
 	    MAX7219_Service();
 
 
-//        if( gSysTickFlag )                        //If SysTick Interrupt occurs
-//        {
-//            MotorMove();                          //move the stepper motor accordingly
-//            gSysTickFlag = false;                 //reset SysTick interrupt flag
-//        }
-
-        /*********************** HCSR04 Stuff ***********************/
-        if(distCalcAvailable){
-            distCalcAvailable = 0;                          // Reset the flag
-            calcDist(echoFallTime, echoRiseTime, &objectDistance);  // Call distance calculation function
-            UpdateDisplayFlag = true;
-        }
-
-
 
         if( gSysTickFlag )                        //If SysTick Interrupt occurs
         {
