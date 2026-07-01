@@ -15,6 +15,7 @@
 #include "HCSR04.h"
 #include "spi.h"
 #include "SysTick.h"
+#include "Motor_Ctrl/Motor_Ctrl.h"
 
 /* Global variables */
 volatile int SysTickTimeout = 0;
@@ -45,6 +46,7 @@ void main(void)
     SysTick_Init();
     MAX7219_Init();
     HCSR04_Init();
+    Motor_Init();           //initializing Motor pins
 
     P1->SEL0 &= ~BIT0;  //On-Board LED for system heartbeat visualization (debugging)
     P1->SEL1 &= ~BIT0;
@@ -81,7 +83,11 @@ void main(void)
 	        SysTickTimeout = 0; //Turn off the SysTick Flag
 
 	    }
-
+//        if( gSysTickFlag )                        //If SysTick Interrupt occurs
+//        {
+//            MotorMove();                          //move the stepper motor accordingly
+//            gSysTickFlag = false;                 //reset SysTick interrupt flag
+//        }
 	}
 
 }

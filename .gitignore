@@ -6,3 +6,4 @@ Debug/
 *.d_raw
 *.lst
 *.xml
+/.metadata/
