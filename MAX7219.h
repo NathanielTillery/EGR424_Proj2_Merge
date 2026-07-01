@@ -25,7 +25,7 @@ void MAX7219_DisplayNumber(int leftNum, int rightNum1, int rightNum2); // Send a
 void MAX7219_write(uint8_t addr, uint8_t data); //Sends 16 bits; address and then data (plus CS low and CS high)
 /* Main calls this often so queued MAX7219 writes can progress. */
 void MAX7219_Service(void);
-
+bool MAX7219_IsReadyForFrame(void);
 
 void MAX7219_CS_low(void);
 void MAX7219_CS_high(void);

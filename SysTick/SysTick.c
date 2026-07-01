@@ -37,7 +37,7 @@ void SysTickSetReload( uint16_t value )
  * Outputs:   None
  * Purpose:   SysTick Interrupt that sets gSysTickFlag
  =========================================================================*/
-void SysTickISR(void)
+void SysTick_Handler(void)
 {
     gSysTickFlag = 1;
     SysTick -> LOAD = ((reloadValue * 3000)-1);  //delay, if reloadValue equals 1, the total delay is

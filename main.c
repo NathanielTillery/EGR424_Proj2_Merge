@@ -41,39 +41,34 @@ void main(void)
 	WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;		// stop watchdog timer
 
 	/* Initialize System */
-    SysTick_Init();
+	SysTick_Init();
     MAX7219_Init();
     HCSR04_Init();
     Motor_Init();           //initializing Motor pins
 
-    static bool UpdateDisplayFlag = false;
-    P1->SEL0 &= ~BIT0;  //On-Board LED for system heartbeat visualization (debugging)
-    P1->SEL1 &= ~BIT0;
-    P1->DIR |= BIT0;    // P1.0 output
-    P1->OUT &= ~BIT0;   // LED off to start
-
     __enable_irq();     // Enable global interrupts so program can really start
+
+    int currCM = 0;
+    int oldCM = 0;
 
 
 	while(1){
-	    /* Service pending display writes outside the SPI ISR. */
-	    MAX7219_Service();
 
-	    /* SysTick decides when stuff runs */
-	    if(UpdateDisplayFlag){
-	        UpdateDisplayFlag = false;               // Reset flag
-	        /* Display distance of object on 7-SEG */
-	        MAX7219_DisplayNumber(objectDistance.distanceCentimeters, objectDistance.distanceFeet, objectDistance.distanceInches);
+	    if(distCalcAvailable){
+	        distCalcAvailable = 0;                          // Reset the flag
+	        calcDist(echoFallTime, echoRiseTime, &objectDistance);  // Call distance calculation function
+
+	        /* Only update display when cm change */
+	        oldCM = currCM;
+	        currCM = objectDistance.distanceCentimeters;
+	        if((oldCM != currCM) && MAX7219_IsReadyForFrame()){   // Only add new measurement if it has changed and we finished writing the last one
+	            MAX7219_DisplayNumber(objectDistance.distanceCentimeters, objectDistance.distanceFeet, objectDistance.distanceInches);
+	        }
+
 	    }
 
-
-        /*********************** HCSR04 Stuff ***********************/
-        if(distCalcAvailable){
-            distCalcAvailable = 0;                          // Reset the flag
-            calcDist(echoFallTime, echoRiseTime, &objectDistance);  // Call distance calculation function
-            UpdateDisplayFlag = true;
-        }
-
+	    /* Service pending display writes outside the SPI ISR. */
+	    MAX7219_Service();
 
 
         if( gSysTickFlag )                        //If SysTick Interrupt occurs

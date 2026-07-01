@@ -50,22 +50,23 @@ void calcDist(int echoFallTime, int echoRiseTime, struct distance *dist){
     dist->distanceFeet = distIN_TOTAL / 12;     // Get feet broken off from inches
     dist->distanceInches = distIN_TOTAL % 12;     // Figure out how many inches are left over
 
-    if( dist->distanceInches >= 0 && dist->distanceInches < 6 )
+    /* We're doing this in cm because inches is a component, so cm will be more straightforward to calculate */
+    if( dist->distanceCentimeters >= 0 && dist->distanceCentimeters < 15 )
     {
         setMotorDirection( true );
         setMotorSpeed( 2 );
     }
-    else if( dist->distanceInches >= 6 && dist->distanceInches < 12 )
+    else if( dist->distanceCentimeters >= 15 && dist->distanceCentimeters < 30 )
     {
         setMotorDirection( true );
         setMotorSpeed( 4 );
     }
-    else if( dist->distanceInches >= 12 && dist->distanceInches < 18 )
+    else if( dist->distanceCentimeters >= 30 && dist->distanceCentimeters < 46 )
     {
         setMotorDirection( false );
         setMotorSpeed( 2 );
     }
-    else if( dist->distanceInches >= 18 && dist->distanceInches < 12 )
+    else if( dist->distanceCentimeters >= 46 && dist->distanceCentimeters < 61 )
     {
         setMotorDirection( false );
         setMotorSpeed( 4 );
