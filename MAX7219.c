@@ -225,17 +225,28 @@ void MAX7219_Service(void)
     }
 }
 
+
+
+
+/* Queue helpers for the MAX7219 command buffer
+ * These helpers are private to MAX7219.c,
+ * aside from MAX7219_queIsReadyForFrame()
+ */
+
 static bool MAX7219_queueIsEmpty(void)
 {
     return (max7219QueueHead == max7219QueueTail);
 }
 
-/* Queue helpers for the MAX7219 command buffer.
- * These helpers are private to MAX7219.c.
- */
+
 static bool MAX7219_queueIsFull(void)
 {
     return (((max7219QueueTail + 1) % MAX7219_QUEUE_SIZE) == max7219QueueHead);
+}
+
+bool MAX7219_IsReadyForFrame(void)
+{
+    return MAX7219_queueIsEmpty() && !SPI_isBusy();
 }
 
 static bool MAX7219_queueCommand(uint8_t addr, uint8_t data)
@@ -252,7 +263,3 @@ static bool MAX7219_queueCommand(uint8_t addr, uint8_t data)
 }
 
 
-bool MAX7219_IsReadyForFrame(void)
-{
-    return MAX7219_queueIsEmpty() && !SPI_isBusy();
-}
