@@ -14,7 +14,7 @@
 #include "MAX7219.h"
 #include "HCSR04.h"
 #include "spi.h"
-#include "SysTick.h"
+#include "SysTick/SysTick.h"
 #include "Motor_Ctrl/Motor_Ctrl.h"
 
 /* Global variables */
@@ -38,51 +38,39 @@ struct distance objectDistance;
 void main(void)
 {
 
-
-
 	WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;		// stop watchdog timer
 
 	/* Initialize System */
-    SysTick_Init();
     MAX7219_Init();
     HCSR04_Init();
     Motor_Init();           //initializing Motor pins
 
-    P1->SEL0 &= ~BIT0;  //On-Board LED for system heartbeat visualization (debugging)
-    P1->SEL1 &= ~BIT0;
-    P1->DIR |= BIT0;    // P1.0 output
-    P1->OUT &= ~BIT0;   // LED off to start
-
     __enable_irq();     // Enable global interrupts so program can really start
+
+    int currCM = 0;
+    int oldCM = 0;
 
 
 	while(1){
-	    /* Service pending display writes outside the SPI ISR. */
-	    MAX7219_Service();
 
-	    /* SysTick decides when stuff runs */
-	    if(SysTickTimeout){
-	        SysTickCount++;
+	    if(distCalcAvailable){
+	        distCalcAvailable = 0;                          // Reset the flag
+	        calcDist(echoFallTime, echoRiseTime, &objectDistance);  // Call distance calculation function
 
-	        /*********************** MAX7219 Stuff ***********************/
-	        if(SysTickCount == 4){  // Display should be updating every 1/2 second now
-	            SysTickCount = 0;               // Reset flag
-
-	            /* Display distance of object on 7-SEG */
+	        /* Only update display when cm change */
+	        oldCM = currCM;
+	        currCM = objectDistance.distanceCentimeters;
+	        if((oldCM != currCM) && MAX7219_IsReadyForFrame()){   // Only add new measurement if it has changed and we finished writing the last one
 	            MAX7219_DisplayNumber(objectDistance.distanceCentimeters, objectDistance.distanceFeet, objectDistance.distanceInches);
 	        }
 
-
-	        /*********************** HCSR04 Stuff ***********************/
-	        if(distCalcAvailable){
-	            distCalcAvailable = 0;                          // Reset the flag
-	            calcDist(echoFallTime, echoRiseTime, &objectDistance);  // Call distance calculation function
-	        }
-
-
-	        SysTickTimeout = 0; //Turn off the SysTick Flag
-
 	    }
+
+
+	    /* Service pending display writes outside the SPI ISR. */
+	    MAX7219_Service();
+
+
 //        if( gSysTickFlag )                        //If SysTick Interrupt occurs
 //        {
 //            MotorMove();                          //move the stepper motor accordingly

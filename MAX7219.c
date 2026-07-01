@@ -157,13 +157,17 @@ void MAX7219_DisplayNumber(int leftNum, int rightNum1, int rightNum2){
 
 
     /* Inches here */
-    tempDig = 0x01;                                 // Set tempDig so that we're working on the 'right' side of the 'right' side
-    while(tempNumRight2 > 0 && tempNumRight2 <= 99){                           // Make tempNum not run again after 0
-        tempDisplayNum = tempNumRight2 % 10;          // Get rightmost digit
-        tempNumRight2 = tempNumRight2 / 10;                 // Remove rightmost digit
-        MAX7219_write(tempDig, tempDisplayNum); // Write the rightmost digit to its place
-        tempDig++;                              // Increment place
-
+    tempDig = 0x01;                                // Set tempDig so that we're working on the 'right' side of the 'right' side
+    if(tempNumRight2 == 0){
+        MAX7219_write(tempDig, tempNumRight2); // Write the rightmost digit to its place
+        tempDig++;
+    }else{
+        while(tempNumRight2 > 0 && tempNumRight2 <= 99){                           // Make tempNum not run again after 0
+            tempDisplayNum = tempNumRight2 % 10;          // Get rightmost digit
+            tempNumRight2 = tempNumRight2 / 10;                 // Remove rightmost digit
+            MAX7219_write(tempDig, tempDisplayNum); // Write the rightmost digit to its place
+            tempDig++;                              // Increment place
+        }
     }
 
     /* If the number doesn't need all of the digits, write the remaining digits to blank */
@@ -245,4 +249,10 @@ static bool MAX7219_queueCommand(uint8_t addr, uint8_t data)
     max7219QueueTail = (max7219QueueTail + 1) % MAX7219_QUEUE_SIZE;
 
     return true;
+}
+
+
+bool MAX7219_IsReadyForFrame(void)
+{
+    return MAX7219_queueIsEmpty() && !SPI_isBusy();
 }
