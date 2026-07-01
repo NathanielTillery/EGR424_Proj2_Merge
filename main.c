@@ -41,14 +41,10 @@ void main(void)
 	WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;		// stop watchdog timer
 
 	/* Initialize System */
+	SysTick_Init();
     MAX7219_Init();
     HCSR04_Init();
     Motor_Init();           //initializing Motor pins
-
-    P1->SEL0 &= ~BIT0;  //On-Board LED for system heartbeat visualization (debugging)
-    P1->SEL1 &= ~BIT0;
-    P1->DIR |= BIT0;    // P1.0 output
-    P1->OUT &= ~BIT0;   // LED off to start
 
     __enable_irq();     // Enable global interrupts so program can really start
 
@@ -71,10 +67,8 @@ void main(void)
 
 	    }
 
-
 	    /* Service pending display writes outside the SPI ISR. */
 	    MAX7219_Service();
-
 
 
         if( gSysTickFlag )                        //If SysTick Interrupt occurs
