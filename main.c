@@ -55,21 +55,20 @@ void main(void)
 	while(1){
 
 	    if(distCalcAvailable){
-	        distCalcAvailable = 0;                          // Reset the flag
+	        distCalcAvailable = 0;                                  // Reset the flag
 	        calcDist(echoFallTime, echoRiseTime, &objectDistance);  // Call distance calculation function
 
 	        /* Only update display when cm change */
 	        oldCM = currCM;
 	        currCM = objectDistance.distanceCentimeters;
-	        if((oldCM != currCM) && MAX7219_IsReadyForFrame()){   // Only add new measurement if it has changed and we finished writing the last one
-	            MAX7219_DisplayNumber(objectDistance.distanceCentimeters, objectDistance.distanceFeet, objectDistance.distanceInches);
+	        if((oldCM != currCM) && MAX7219_IsReadyForFrame()){     // Only add new measurement if it has changed and we finished writing the last one
+	            MAX7219_DisplayNumber(objectDistance.distanceCentimeters, objectDistance.distanceFeet, objectDistance.distanceInches);  // Display distances on 7-SEG
 	        }
 
 	    }
 
 	    /* Service pending display writes outside the SPI ISR. */
 	    MAX7219_Service();
-
 
         if( gSysTickFlag )                        //If SysTick Interrupt occurs
         {

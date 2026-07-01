@@ -52,32 +52,39 @@
 
 #define MAX7219_QUEUE_SIZE 32
 
-/* Private command type for queued MAX7219 writes.
+/* ************************************************************************
+ * Private command type for queued MAX7219 writes.
  * A MAX7219 command is two SPI bytes: register address first, then data.
- */
+ * ************************************************************************/
 struct MAX7219_Command{
     uint8_t addr;
     uint8_t data;
 };
 
 
-/* 16-Bit Number sent to the MAX7219 hardware as an SPI command */
-// Bits 0-7 DATA (0 LSB; 7 MSB)
-// Bits 8-11 ADDRESS
-// BITS 14-15 RESERVED
+/* ************************************************************************
+ * 16-Bit Number sent to the MAX7219 hardware as an SPI command
+ * its 0-7 DATA (0 LSB; 7 MSB)
+ * Bits 8-11 ADDRESS
+ * BITS 14-15 RESERVED
+ * ************************************************************************/
 uint16_t SPI_Command = 0;
 
-/* Queue state for display commands waiting on the interrupt-driven SPI driver.
+/* *****************************************************************************
+ * Queue state for display commands waiting on the interrupt-driven SPI driver.
  * Head is the next command to send; tail is where the next command is stored.
- */
+ * *****************************************************************************/
 static struct MAX7219_Command max7219Queue[MAX7219_QUEUE_SIZE];
 static int max7219QueueHead = 0;
 static int max7219QueueTail = 0;
 static volatile int max7219QueueOverflow = 0;
 
+/* Private function prototypes */
 static bool MAX7219_queueIsEmpty(void);
 static bool MAX7219_queueIsFull(void);
 static bool MAX7219_queueCommand(uint8_t addr, uint8_t data);
+static void MAX7219_CS_low(void);
+static void MAX7219_CS_high(void);
 
 void MAX7219_Init(void){
 
@@ -90,7 +97,7 @@ void MAX7219_Init(void){
     /* Configure and enable SPI */
     SPI_Init(); // Takes care of CLK (P1.5), MISO (P1.7), MOSI (P1.6)
 
-    MAX7219_write(ADDR_DISPLAY_TEST, 0x00);     //Turn off display test mode
+    MAX7219_write(ADDR_DISPLAY_TEST, 0x00);  //Turn off display test mode
     MAX7219_write(ADDR_DECODE_MODE, 0xFF);  // Turn on CODE B built-in font
     MAX7219_write(ADDR_SCAN_LIMIT, 0x07);   // Use all 8 digits
     MAX7219_write(ADDR_INTENSITY, 0x04);    // medium-low brightness
@@ -99,21 +106,22 @@ void MAX7219_Init(void){
 }
 
 
-
+/* ***********************************************************************************
+ * Queue register / data command using private MAX7219_queueCommand() function
+ * If queue command returns false, it is known that the queue is overflowing.
+ * ***********************************************************************************/
 void MAX7219_write(uint8_t addr, uint8_t data){
 
-    /* Queue the register/data command instead of blocking on SPI.
-     * MAX7219_Service() starts transfers when the SPI hardware is available.
-     */
     if(!MAX7219_queueCommand(addr, data)){
         max7219QueueOverflow = 1;
     }
 
-    MAX7219_Service();
-
+    MAX7219_Service();  // Immediately call the service routine to expedite the commands being added to the queue
 }
 
-/* Takes two two digit and one four digit numbers and displays them */
+/* ***********************************************************************************
+ * Takes two two digit and one four digit numbers and adds them to the display queue
+ * ***********************************************************************************/
 void MAX7219_DisplayNumber(int leftNum, int rightNum1, int rightNum2){
     int tempNumLeft = leftNum;
     int tempNumRight1 = rightNum1;
@@ -122,31 +130,30 @@ void MAX7219_DisplayNumber(int leftNum, int rightNum1, int rightNum2){
     int tempDig = 0x05;
 
     /* Display centimeters on the left side*/
-    while(tempNumLeft > 0 && tempNumLeft <= 9999){                    // Make tempNum not run again after 0
-        tempDisplayNum = tempNumLeft % 10;          // Get rightmost digit
+    while(tempNumLeft > 0 && tempNumLeft <= 9999){      // Make tempNum not run again after 0
+        tempDisplayNum = tempNumLeft % 10;              // Get rightmost digit
         tempNumLeft = tempNumLeft / 10;                 // Remove rightmost digit
-        MAX7219_write(tempDig, tempDisplayNum); // Write the rightmost digit to its place
-        tempDig++;                              // Increment place
+        MAX7219_write(tempDig, tempDisplayNum);         // Write the rightmost digit to its place
+        tempDig++;                                      // Increment place
     }
     /* If the number doesn't need all of the digits, write the remaining digits to blank */
     while(tempDig <= 0x08){
-        MAX7219_write(tempDig, DATA_BLANK);     // Write the rightmost digit to its place
-        tempDig++;                              // Increment place
+        MAX7219_write(tempDig, DATA_BLANK);             // Write the rightmost digit to its place
+        tempDig++;                                      // Increment place
     }
-
 
     /* Display feet.inches on the right side*/
     /* Feet here */
-    tempDig = 0x03;                                 // Set tempDig so that we're working on the 'right' side
-    while(tempNumRight1 > 0 && tempNumRight1 <= 99){                   // Make tempNum not more than 2 digits
-        tempDisplayNum = tempNumRight1 % 10;          // Get rightmost digit
-        tempNumRight1 = tempNumRight1 / 10;                 // Remove rightmost digit
+    tempDig = 0x03;                                             // Set tempDig so that we're working on the 'right' side
+    while(tempNumRight1 > 0 && tempNumRight1 <= 99){            // Make tempNum not more than 2 digits
+        tempDisplayNum = tempNumRight1 % 10;                    // Get rightmost digit
+        tempNumRight1 = tempNumRight1 / 10;                     // Remove rightmost digit
         if(tempDig == 3){
             MAX7219_write(tempDig, (tempDisplayNum | DATA_DP)); // Write the rightmost digit to its place WITH DECIMAL
         }else{
-            MAX7219_write(tempDig, tempDisplayNum); // Write the rightmost digit to its place without decimal
+            MAX7219_write(tempDig, tempDisplayNum);             // Write the rightmost digit to its place without decimal
         }
-        tempDig++;                              // Increment place
+        tempDig++;                                              // Increment place
     }
 
     /* If the number doesn't need all of the digits, write the remaining digits to blank */
@@ -155,18 +162,17 @@ void MAX7219_DisplayNumber(int leftNum, int rightNum1, int rightNum2){
         tempDig++;                              // Increment place
     }
 
-
     /* Inches here */
-    tempDig = 0x01;                                // Set tempDig so that we're working on the 'right' side of the 'right' side
+    tempDig = 0x01;                                             // Set tempDig so that we're working on the 'right' side of the 'right' side
     if(tempNumRight2 == 0){
-        MAX7219_write(tempDig, tempNumRight2); // Write the rightmost digit to its place
+        MAX7219_write(tempDig, tempNumRight2);                  // Write the rightmost digit to its place
         tempDig++;
     }else{
-        while(tempNumRight2 > 0 && tempNumRight2 <= 99){                           // Make tempNum not run again after 0
-            tempDisplayNum = tempNumRight2 % 10;          // Get rightmost digit
+        while(tempNumRight2 > 0 && tempNumRight2 <= 99){        // Make tempNum not run again after 0
+            tempDisplayNum = tempNumRight2 % 10;                // Get rightmost digit
             tempNumRight2 = tempNumRight2 / 10;                 // Remove rightmost digit
-            MAX7219_write(tempDig, tempDisplayNum); // Write the rightmost digit to its place
-            tempDig++;                              // Increment place
+            MAX7219_write(tempDig, tempDisplayNum);             // Write the rightmost digit to its place
+            tempDig++;                                          // Increment place
         }
     }
 
@@ -176,11 +182,11 @@ void MAX7219_DisplayNumber(int leftNum, int rightNum1, int rightNum2){
         tempDig++;                              // Increment place
     }
 
-
-
-
 }
 
+/* **************************************************************
+ * Clears the MAX7219 7-SEG display by writing each digit blank
+ * **************************************************************/
 void MAX7219_Clear(void){
     int i;
     for(i = 0x01; i <= 0x08; i++){
@@ -188,32 +194,29 @@ void MAX7219_Clear(void){
     }
 }
 
-
-/* Helper functions to deal with CS pin */
-void MAX7219_CS_low(void){P2->OUT &= ~BIT3;} //P2.3 OFF
-void MAX7219_CS_high(void){P2->OUT |= BIT3;} //P2.3 ON
-
-
-
-/* Services the MAX7219 queue using the nonblocking SPI driver.
+/* ******************************************************************************
+ * Services the MAX7219 queue using the nonblocking SPI driver.
  * CS stays low through the full two-byte command and goes high when SPI is done.
- */
+ * ******************************************************************************/
 void MAX7219_Service(void)
 {
     static bool transferActive = false;
     static uint8_t txBytes[2];
 
+    /* If transfer is already active but finished, send CS high and end the transfer */
     if(transferActive && SPI_transferDone()){
         MAX7219_CS_high();
         SPI_clearTransferDone();
         transferActive = false;
     }
 
+    /* If no transfer is active and the display queue isn't empty, plus SPI isn't busy, start a transfer with the two first bytes in queue */
     if(!transferActive && !MAX7219_queueIsEmpty() && !SPI_isBusy()){
         txBytes[0] = max7219Queue[max7219QueueHead].addr;
         txBytes[1] = max7219Queue[max7219QueueHead].data;
 
         MAX7219_CS_low();
+
 
         if(SPI_StartTransfer(txBytes, 2)){
             max7219QueueHead = (max7219QueueHead + 1) % MAX7219_QUEUE_SIZE;
@@ -228,29 +231,18 @@ void MAX7219_Service(void)
 
 
 
-/* Queue helpers for the MAX7219 command buffer
- * These helpers are private to MAX7219.c,
- * aside from MAX7219_queIsReadyForFrame()
- */
+/* ******************************************************************************
+ * Queue helpers for the MAX7219 command buffer
+ * These helpers are private to MAX7219.c, aside from MAX7219_queIsReadyForFrame()
+ * ******************************************************************************/
+static bool MAX7219_queueIsEmpty(void){return (max7219QueueHead == max7219QueueTail);}
 
-static bool MAX7219_queueIsEmpty(void)
-{
-    return (max7219QueueHead == max7219QueueTail);
-}
+static bool MAX7219_queueIsFull(void){return (((max7219QueueTail + 1) % MAX7219_QUEUE_SIZE) == max7219QueueHead);}
 
+bool MAX7219_IsReadyForFrame(void){return MAX7219_queueIsEmpty() && !SPI_isBusy();}
 
-static bool MAX7219_queueIsFull(void)
-{
-    return (((max7219QueueTail + 1) % MAX7219_QUEUE_SIZE) == max7219QueueHead);
-}
-
-bool MAX7219_IsReadyForFrame(void)
-{
-    return MAX7219_queueIsEmpty() && !SPI_isBusy();
-}
-
-static bool MAX7219_queueCommand(uint8_t addr, uint8_t data)
-{
+/* This function serves as a error check and also performs the actual addition to the queue */
+static bool MAX7219_queueCommand(uint8_t addr, uint8_t data){
     if(MAX7219_queueIsFull()){
         return false;
     }
@@ -261,5 +253,13 @@ static bool MAX7219_queueCommand(uint8_t addr, uint8_t data)
 
     return true;
 }
+
+
+/* ******************************************************************************
+ * CS low and CS high are private helper functions meant to aid in the sending of
+ * SPI commands to the MAX7219 hardware
+ * ******************************************************************************/
+static void MAX7219_CS_low(void){P2->OUT &= ~BIT3;} //P2.3 OFF
+static void MAX7219_CS_high(void){P2->OUT |= BIT3;} //P2.3 ON
 
 

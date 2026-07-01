@@ -13,22 +13,47 @@
 
 /* Includes */
 #include <msp.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include "spi.h"
 
 
 
 /* Public function declarations */
-void MAX7219_Init(void); // Initialize
-void MAX7219_Clear(void); // Clear the entire display
-void MAX7219_DisplayNumber(int leftNum, int rightNum1, int rightNum2); // Send an number to display
-void MAX7219_write(uint8_t addr, uint8_t data); //Sends 16 bits; address and then data (plus CS low and CS high)
-/* Main calls this often so queued MAX7219 writes can progress. */
-void MAX7219_Service(void);
-bool MAX7219_IsReadyForFrame(void);
 
-void MAX7219_CS_low(void);
-void MAX7219_CS_high(void);
+/* *****************************************************************
+ * Initializes the MAX7219 driver, chip-select pin, and SPI module.
+ * Initialization commands are queued and sent by MAX7219_Service().
+ * *****************************************************************/
+void MAX7219_Init(void);
+
+/* Queues blank writes for all eight digits. */
+void MAX7219_Clear(void);
+
+/* **************************************
+ * Queues one full display update.
+ * leftNum is written to digits 5-8.
+ * rightNum1 is written to digits 3-4.
+ * rightNum2 is written to digits 1-2.
+ * **************************************/
+void MAX7219_DisplayNumber(int leftNum, int rightNum1, int rightNum2);
+
+/* ***************************************************************
+ * Queues one raw MAX7219 register/data command using
+ * MAX7219_queueCommand(); returns false if queue is overflowing
+ * addr is the MAX7219 register address.
+ * data is the value to write to that register.
+ * ***************************************************************/
+void MAX7219_write(uint8_t addr, uint8_t data);
+
+/* ********************************************************************
+ * Services queued MAX7219 commands using the nonblocking SPI driver.
+ * Main should call this often so queued display writes can progress.
+ * ********************************************************************/
+void MAX7219_Service(void);
+
+/* Returns true when the display queue is empty and SPI is available. */
+bool MAX7219_IsReadyForFrame(void);
 
 
 #endif /* MAX7219_H_ */
