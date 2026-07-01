@@ -14,7 +14,7 @@
 #include "MAX7219.h"
 #include "HCSR04.h"
 #include "spi.h"
-#include "SysTick.h"
+#include "SysTick/SysTick.h"
 #include "Motor_Ctrl/Motor_Ctrl.h"
 
 /* Global variables */
@@ -38,8 +38,6 @@ struct distance objectDistance;
 void main(void)
 {
 
-
-
 	WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;		// stop watchdog timer
 
 	/* Initialize System */
@@ -61,7 +59,7 @@ void main(void)
 	    MAX7219_Service();
 
 	    /* SysTick decides when stuff runs */
-	    if(SysTickTimeout){
+	    if(gSysTickFlag){
 	        SysTickCount++;
 
 	        /*********************** MAX7219 Stuff ***********************/
@@ -83,11 +81,13 @@ void main(void)
 	        SysTickTimeout = 0; //Turn off the SysTick Flag
 
 	    }
-//        if( gSysTickFlag )                        //If SysTick Interrupt occurs
-//        {
-//            MotorMove();                          //move the stepper motor accordingly
-//            gSysTickFlag = false;                 //reset SysTick interrupt flag
-//        }
+
+        if( gSysTickFlag )                        //If SysTick Interrupt occurs
+        {
+            MotorMove();                          //move the stepper motor accordingly
+            gSysTickFlag = false;                 //reset SysTick interrupt flag
+        }
+
 	}
 
 }
