@@ -1,0 +1,8 @@
+Debug/
+*.obj
+*.out
+*.map
+*.d
+*.d_raw
+*.lst
+*.xml
